@@ -22,6 +22,31 @@ func NewUserController(c *mongo.Client) *UserController {
 	return &UserController{c}
 }
 
+func (uc UserController) GetAllUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	coll := uc.client.Database("mongo-golang").Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cursor, err := coll.Find(ctx, bson.M{})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer cursor.Close(ctx)
+	var users []models.User
+	for cursor.Next(ctx) {
+		var u models.User
+		if err := cursor.Decode(&u); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		users = append(users, u)
+	}
+	uj, _ := json.Marshal(users)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%s", uj)
+}
+
 func (uc UserController) GetUser(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	id := ps.ByName("id")
 	oid, err := primitive.ObjectIDFromHex(id)

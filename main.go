@@ -21,6 +21,7 @@ func main() {
 
 	uc := controllers.NewUserController(client)
 
+	r.GET("/users", uc.GetAllUsers)
 	r.GET("/user/:id", uc.GetUser)
 	r.POST("/user", uc.CreateUser)
 	r.DELETE("/user/:id", uc.DeleteUser)
