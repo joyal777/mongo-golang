@@ -24,6 +24,7 @@ func main() {
 	r.GET("/user/:id", uc.GetUser)
 	r.POST("/user", uc.CreateUser)
 	r.DELETE("/user/:id", uc.DeleteUser)
+	r.PUT("/user/:id", uc.UpdateUser)
 
 	fmt.Println("Server started at localhost:9000")
 	log.Fatal(http.ListenAndServe("localhost:9000", r))

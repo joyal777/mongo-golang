@@ -92,3 +92,31 @@ func (uc UserController) DeleteUser(w http.ResponseWriter, r *http.Request, ps h
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Deleted user %s\n", id)
 }
+
+func (uc UserController) UpdateUser(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	id := ps.ByName("id")
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		w.WriteHeader(404)
+		return
+	}
+	coll := uc.client.Database("mongo-golang").Collection("users")
+
+	u := models.User{}
+	json.NewDecoder(r.Body).Decode(&u)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err = coll.ReplaceOne(ctx, bson.M{"_id": oid}, u)
+	if err != nil {
+		w.WriteHeader(404)
+		return
+	}
+
+	uj, _ := json.Marshal(u)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%s", uj)
+
+}
