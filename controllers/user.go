@@ -97,26 +97,37 @@ func (uc UserController) UpdateUser(w http.ResponseWriter, r *http.Request, ps h
 	id := ps.ByName("id")
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	// 1. Decode the update data into a map or the struct
+	var u models.User
+	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Ensure the ID from the URL is the one used, not something from the JSON body
+	u.Id = oid
+
 	coll := uc.client.Database("mongo-golang").Collection("users")
-
-	u := models.User{}
-	json.NewDecoder(r.Body).Decode(&u)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err = coll.ReplaceOne(ctx, bson.M{"_id": oid}, u)
+	// 2. Use UpdateOne with $set to modify ONLY provided fields
+	// Note: To make this truly dynamic, you'd convert the struct to a bson.M
+	update := bson.M{"$set": u}
+
+	_, err = coll.UpdateOne(ctx, bson.M{"_id": oid}, update)
 	if err != nil {
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	// 3. Return the updated object
 	uj, _ := json.Marshal(u)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "%s", uj)
-
 }
